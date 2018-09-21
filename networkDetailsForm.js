@@ -7,7 +7,7 @@ import t from 'tcomb-form-native';
 type Props = {};
 
 const Form = t.form.Form;
-const WifiDetails = t.struct({networkID: t.String, password: t.String});
+const WifiDetails = t.struct({networkID: t.String, password: t.maybe(t.String)});
 
 const defOptions = {
   fields: {
@@ -29,12 +29,16 @@ export default class NetworkDetailsForm extends Component<Props> {
       isConnected: false,
       options: defOptions,
       value: {
-        networkID: props.networkID
+        networkID: props.networkID,
+        password: ''
       }
     };
   }
 
   onSubmit() {
+    this.setState({
+      isRequestInProgress: true
+    });
 
     IotWifiController.connectToNetwork(this.refs.networkDetails.getValue(), (response) => {
       if (response.payload.state === 'COMPLETED') {
@@ -43,16 +47,13 @@ export default class NetworkDetailsForm extends Component<Props> {
         this.setState({
           options: t.update(this.state.options, {
             hasError: {'$set': true},
-            error: {'$set': 'Connection attempt failed. Please check credentials and try again.'},
-            fields: {
-              password: {
-                error: {'$set': 'TEST'},
-                hasError: {'$set': true},
-              }
-            }
+            error: {'$set': 'Connection attempt failed. Please check credentials and try again.'}
           })
         });
       }
+      this.setState({
+        isRequestInProgress: false
+      })
     });
   }
 
@@ -79,8 +80,8 @@ export default class NetworkDetailsForm extends Component<Props> {
     }
     return (<View style={styles.networkDetailsForm}>
       <Form ref="networkDetails" type={WifiDetails} options={this.state.options} value={this.state.value} onChange={this.onChange.bind(this)}/>
-      <TouchableHighlight onPress={this.onSubmit.bind(this)}>
-        <Text style={styles.submit}>Connect</Text>
+      <TouchableHighlight onPress={this.onSubmit.bind(this)} disabled={this.state.isRequestInProgress}>
+        <Text style={this.state.isRequestInProgress ? styles.welcome : styles.submit}>Connect</Text>
       </TouchableHighlight>
     </View>);
   }
